@@ -38,12 +38,15 @@ class GIFDataset(Dataset):
         ).keys()
         self.transform = transform
 
-    def create_binary_vectors(self, subjects, objects):
+    def create_binary_vector(self, subjects, actions, objects):
         subject_vector = [
             1 if subject in subjects else 0 for subject in self.all_subjects
         ]
+        action_vector = [1 if action in actions else 0 for action in self.all_actions]
         object_vector = [1 if object_ in objects else 0 for object_ in self.all_objects]
-        return subject_vector, object_vector
+
+        # Combine the vectors to create a single target vector
+        return subject_vector + action_vector + object_vector
 
     def __len__(self):
         return len(self.gif_df)
@@ -59,11 +62,14 @@ class GIFDataset(Dataset):
         gif_tensor, attention_mask = load_gif(gif_url)
         # Tuple of two sets of strings
         (subjects, actions, objects) = target_to_subjects_and_objects(target)
+        
+        # n hot encoding, shape (num_subjects + num_actions + num_objects) ~ (12,000)
+        target_vector = self.create_binary_vector(subjects, actions, objects)
 
         sample = {
             "gif": gif_tensor,
             "attention_mask": attention_mask,
-            "target": (subjects, actions, objects),
+            "target": target_vector,
         }
         return sample
 

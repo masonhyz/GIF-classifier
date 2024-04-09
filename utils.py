@@ -165,7 +165,6 @@ def load_subject_object_frequency():
 
     return subj_freq, act_freq, obj_freq
 
-
 if __name__ == "__main__":
     # get_subj_obj_frequency()
     load_subject_object_frequency()
