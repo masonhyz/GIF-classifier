@@ -114,44 +114,58 @@ def target_to_subjects_and_objects(target_str: str) -> tuple[set[str], set[str]]
     doc = nlp(target_str)
 
     subjects = set()
+    actions = set()
     objects = set()
 
     for token in doc:
         if "subj" in token.dep_:
             subjects.add(token.text)
+        elif token.pos_ == "VERB":
+            actions.add(token.text)
         elif "obj" in token.dep_:
             objects.add(token.text)
 
-    return subjects, objects
+    return subjects, actions, objects
 
 
 def get_subj_obj_frequency():
     data = pd.read_csv("data/tgif-v1.0.tsv", sep="\t")
     subjs = defaultdict(int)
+    acts = defaultdict(int)
     objs = defaultdict(int)
     for _, row in tqdm(data.iterrows(), total=data.shape[0]):
         target = row[1]
-        subjects, objects = target_to_subjects_and_objects(target)
+        subjects, actions, objects = target_to_subjects_and_objects(target)
         for subj in subjects:
             subjs[subj] += 1
+        for act in actions:
+            acts[act] += 1
         for obj in objects:
             objs[obj] += 1
-            
-    with open('subj_obj_data/subject_frequency.json', 'w') as f:
+
+    with open("subj_obj_data/subject_frequency.json", "w") as f:
         json.dump(subjs, f, ensure_ascii=False, indent=4)
-        
-    with open('subj_obj_data/object_frequency.json', 'w') as f:
+
+    with open("subj_obj_data/object_frequency.json", "w") as f:
         json.dump(objs, f, ensure_ascii=False, indent=4)
-        
+
+    with open("subj_obj_data/action_frequency.json", "w") as f:
+        json.dump(acts, f, ensure_ascii=False, indent=4)
+
+
 def load_subject_object_frequency():
-    with open('subj_obj_data/subject_frequency.json') as f:
+    with open("subj_obj_data/subject_frequency.json") as f:
         subj_freq = json.load(f)
 
-    with open('subj_obj_data/object_frequency.json') as f:
+    with open("subj_obj_data/object_frequency.json") as f:
         obj_freq = json.load(f)
         
-    return subj_freq, obj_freq
-        
+    with open("subj_obj_data/action_frequency.json") as f:
+        act_freq = json.load(f)
+
+    return subj_freq, act_freq, obj_freq
+
+
 if __name__ == "__main__":
     # get_subj_obj_frequency()
     load_subject_object_frequency()
