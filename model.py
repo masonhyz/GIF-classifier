@@ -1,7 +1,7 @@
 
 import torch.nn as nn
 
-from preprocess import MAX_WIDTH, MAX_HEIGHT
+from utils import MAX_WIDTH, MAX_HEIGHT, TARGET_NUM_FRAMES
 
 class GIFClassifier(nn.Module):
     def __init__(self, num_classes) -> None:
