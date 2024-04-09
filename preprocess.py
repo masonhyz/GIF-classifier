@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import torchtext
-from utils import crop
+from utils import __crop_gif_frame
 import torch
 import aiohttp
 import asyncio
@@ -63,7 +63,7 @@ def process_gif(gif_data, text, embedding_model=EMBEDDING_MODEL):
         if original_width > MAX_WIDTH or original_height > MAX_HEIGHT:
             target_width = min(MAX_WIDTH, original_width)
             target_height = min(MAX_HEIGHT, original_height)
-            resized_frame = crop(rgb_frame, target_width, target_height)
+            resized_frame = __crop_gif_frame(rgb_frame, target_width, target_height)
         else:
             resized_frame = rgb_frame
 

@@ -7,15 +7,11 @@ import requests
 from io import BytesIO
 import torch
 
-DATA_PATH = "data/tgif-v1.0.tsv"
-data = pd.read_csv(DATA_PATH, sep="\t")
-embedding = torchtext.vocab.GloVe(name="6B", dim=100)
-PROGRESS_FILE = "preprocessing_progress.pt"
 MAX_WIDTH = 555
 MAX_HEIGHT = 810
 
 
-def crop(image, target_width, target_height):
+def __crop_gif_frame(image, target_width, target_height):
     width, height = image.size
     left = (width - target_width) // 2
     top = (height - target_height) // 2
@@ -27,29 +23,37 @@ def crop(image, target_width, target_height):
     return cropped_rgb_image
 
 
-def load_gif(path):
+def __resize_gif_frame(rgb_frame, frame):
+    original_width, original_height = rgb_frame.size
+
+    if original_width > MAX_WIDTH or original_height > MAX_HEIGHT:
+        target_width = min(MAX_WIDTH, original_width)
+        target_height = min(MAX_HEIGHT, original_height)
+        print(
+            f"Resizing frame from {original_width}x{original_height} to {target_width}x{target_height}"
+        )
+        resized_frame = __crop_gif_frame(frame, target_width, target_height)
+        assert resized_frame.size == (target_width, target_height)
+    else:
+        resized_frame = rgb_frame
+    return resized_frame
+
+
+def load_gif(path, target_num_frames=40):
     response = requests.get(path)
     gif_data = BytesIO(response.content)
     gif = Image.open(gif_data)
     frames_as_tensors = []
     attention_masks = []
+    
+    # Only take the first target_num_frames frames
+    frames = list(ImageSequence.Iterator(gif))[:target_num_frames]
 
-    for frame in ImageSequence.Iterator(gif):
+    for frame in frames:
         # frame.show()
         rgb_frame = frame.convert("RGB")
-        original_width, original_height = rgb_frame.size
 
-        if original_width > MAX_WIDTH or original_height > MAX_HEIGHT:
-            # Resize the frame to fit within the constraints
-            target_width = min(MAX_WIDTH, original_width)
-            target_height = min(MAX_HEIGHT, original_height)
-            print(
-                f"Resizing frame from {original_width}x{original_height} to {target_width}x{target_height}"
-            )
-            resized_frame = crop(frame, target_width, target_height)
-            assert resized_frame.size == (target_width, target_height)
-        else:
-            resized_frame = rgb_frame
+        resized_frame = __resize_gif_frame(rgb_frame, frame)
 
         mask = torch.ones((resized_frame.size[1], resized_frame.size[0]))
 
@@ -71,14 +75,24 @@ def load_gif(path):
                 MAX_HEIGHT - resized_frame.size[1],
             ),
         )
+
         frame_tensor = transforms.ToTensor()(padded_frame)
-        assert frame_tensor.shape[0] == 3
+        assert (
+            frame_tensor.shape[0] == 3
+            and frame_tensor.shape[1:] == (MAX_HEIGHT, MAX_WIDTH)
+            and padded_mask.shape == (MAX_HEIGHT, MAX_WIDTH)
+        )
 
         frames_as_tensors.append(frame_tensor)
         attention_masks.append(padded_mask)
-        assert frame_tensor.shape[1:] == (MAX_HEIGHT, MAX_WIDTH)
-        assert padded_mask.shape == (MAX_HEIGHT, MAX_WIDTH)
+        
+    # Pad frames and masks if necessary
+    while len(frames_as_tensors) < target_num_frames:
+        frames_as_tensors.append(frames_as_tensors[-1])
+        attention_masks.append(torch.zeros((MAX_HEIGHT, MAX_WIDTH)))
 
-    gif_tensor = torch.stack(frames_as_tensors, dim=0)  # (num_frames, 3, 810, 540)
-    attention_mask = torch.stack(attention_masks, dim=0)  # (num_frames, 810, 540)
+    gif_tensor = torch.stack(frames_as_tensors, dim=0)
+    attention_mask = torch.stack(attention_masks, dim=0)
+    assert gif_tensor.shape == (target_num_frames, 3, MAX_HEIGHT, MAX_WIDTH)
+    assert attention_mask.shape == (target_num_frames, MAX_HEIGHT, MAX_WIDTH)
     return gif_tensor, attention_mask
