@@ -53,11 +53,10 @@ def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
     gif = Image.open(gif_data)
     frames_as_tensors = []
     attention_masks = []
-
+    count = 0
+    
     # Only take the first target_num_frames frames
-    frames = list(ImageSequence.Iterator(gif))[:target_num_frames]
-
-    for frame in frames:
+    for frame in ImageSequence.Iterator(gif):
         # frame.show()
         rgb_frame = frame.convert("RGB")
 
@@ -93,11 +92,16 @@ def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
 
         frames_as_tensors.append(frame_tensor)
         attention_masks.append(padded_mask)
+        
+        count += 1
+        if count == target_num_frames:
+            break
 
     # Pad frames and masks if necessary
-    while len(frames_as_tensors) < target_num_frames:
+    while count < target_num_frames:
         frames_as_tensors.append(frames_as_tensors[-1])
         attention_masks.append(torch.zeros((MAX_HEIGHT, MAX_WIDTH)))
+        count += 1
 
     gif_tensor = torch.stack(frames_as_tensors, dim=0)
     attention_mask = torch.stack(attention_masks, dim=0)

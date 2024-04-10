@@ -74,4 +74,6 @@ class GIFDataset(Dataset):
         return sample
 
 
+batch_size = 5
 gif_dataset = GIFDataset()
+gif_loader = DataLoader(gif_dataset, batch_size=5, shuffle=False)
