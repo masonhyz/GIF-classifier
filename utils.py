@@ -10,13 +10,13 @@ import spacy
 from collections import defaultdict
 from tqdm import tqdm
 import json
+import numpy as np
 
-# Load the spaCy model
 nlp = spacy.load("en_core_web_sm")
 
-MAX_WIDTH = 555
-MAX_HEIGHT = 810
-TARGET_NUM_FRAMES = 40
+MAX_WIDTH = 500
+MAX_HEIGHT = 500
+TARGET_NUM_FRAMES = 50
 
 
 def __crop_gif_frame(image, target_width, target_height):
@@ -26,6 +26,7 @@ def __crop_gif_frame(image, target_width, target_height):
     right = left + target_width
     bottom = top + target_height
     cropped_image = image.crop((left, top, right, bottom))
+    # cropped_image.show()
     cropped_rgb_image = Image.new("RGB", (target_width, target_height))
     cropped_rgb_image.paste(cropped_image)
     return cropped_rgb_image
@@ -37,67 +38,44 @@ def __resize_gif_frame(rgb_frame, frame):
     if original_width > MAX_WIDTH or original_height > MAX_HEIGHT:
         target_width = min(MAX_WIDTH, original_width)
         target_height = min(MAX_HEIGHT, original_height)
-        print(
-            f"Resizing frame from {original_width}x{original_height} to {target_width}x{target_height}"
-        )
+        # print(f"Resizing frame from {original_width}x{original_height} to {target_width}x{target_height}")
         resized_frame = __crop_gif_frame(frame, target_width, target_height)
+        is_resized = True
         assert resized_frame.size == (target_width, target_height)
     else:
         resized_frame = rgb_frame
-    return resized_frame
+        is_resized = False
+    return resized_frame, is_resized
 
 
 def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
     response = requests.get(path)
     gif_data = BytesIO(response.content)
     gif = Image.open(gif_data)
+
     frames_as_tensors = []
     attention_masks = []
     count = 0
-    
-    # Only take the first target_num_frames frames
+
     for frame in ImageSequence.Iterator(gif):
         # frame.show()
         rgb_frame = frame.convert("RGB")
 
-        resized_frame = __resize_gif_frame(rgb_frame, frame)
+        resized_frame, is_resized = __resize_gif_frame(rgb_frame, frame)
 
         mask = torch.ones((resized_frame.size[1], resized_frame.size[0]))
 
-        padded_mask = transforms.functional.pad(
-            mask,
-            (
-                0,
-                0,
-                MAX_WIDTH - resized_frame.size[0],
-                MAX_HEIGHT - resized_frame.size[1],
-            ),
-        )
-        padded_frame = transforms.functional.pad(
-            resized_frame,
-            (
-                0,
-                0,
-                MAX_WIDTH - resized_frame.size[0],
-                MAX_HEIGHT - resized_frame.size[1],
-            ),
-        )
+        padded_mask = transforms.functional.pad(mask, (0, 0, MAX_WIDTH - resized_frame.size[0], MAX_HEIGHT - resized_frame.size[1]))
+        padded_frame = transforms.functional.pad(resized_frame, (0, 0, MAX_WIDTH - resized_frame.size[0], MAX_HEIGHT - resized_frame.size[1]))
 
         frame_tensor = transforms.ToTensor()(padded_frame)
-        assert (
-            frame_tensor.shape[0] == 3
-            and frame_tensor.shape[1:] == (MAX_HEIGHT, MAX_WIDTH)
-            and padded_mask.shape == (MAX_HEIGHT, MAX_WIDTH)
-        )
-
         frames_as_tensors.append(frame_tensor)
         attention_masks.append(padded_mask)
-        
+
         count += 1
         if count == target_num_frames:
             break
 
-    # Pad frames and masks if necessary
     while count < target_num_frames:
         frames_as_tensors.append(frames_as_tensors[-1])
         attention_masks.append(torch.zeros((MAX_HEIGHT, MAX_WIDTH)))
@@ -107,7 +85,14 @@ def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
     attention_mask = torch.stack(attention_masks, dim=0)
     assert gif_tensor.shape == (target_num_frames, 3, MAX_HEIGHT, MAX_WIDTH)
     assert attention_mask.shape == (target_num_frames, MAX_HEIGHT, MAX_WIDTH)
-    return gif_tensor, attention_mask
+    return gif_tensor, attention_mask, is_resized
+
+
+if __name__ == "__main__":
+    # get_subj_obj_frequency()
+    # load_subject_object_frequency()
+    pass
+        
 
 
 def target_to_subjects_and_objects(target_str: str) -> tuple[set[str], set[str]]:
@@ -163,12 +148,15 @@ def load_subject_object_frequency():
 
     with open("subj_obj_data/object_frequency.json") as f:
         obj_freq = json.load(f)
-        
+
     with open("subj_obj_data/action_frequency.json") as f:
         act_freq = json.load(f)
 
     return subj_freq, act_freq, obj_freq
 
-if __name__ == "__main__":
-    # get_subj_obj_frequency()
-    load_subject_object_frequency()
+
+def get_gif_len(gif_url):
+    response = requests.get(gif_url)
+    gif_data = BytesIO(response.content)
+    gif = Image.open(gif_data)
+    return len(list(ImageSequence.Iterator(gif)))
