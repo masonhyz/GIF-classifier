@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 class Conv2_1d(nn.Module):
     """2+1d Convolutional Layer"""
@@ -9,10 +9,10 @@ class Conv2_1d(nn.Module):
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
-                 hidden_size: int | None,
                  kernel_size: Tuple[int, int],
                  stride: Tuple[int, int]=(1, 1),
-                 padding: Tuple[int, int]=(0, 0)) -> None:
+                 padding: Tuple[int, int]=(0, 0),
+                 hidden_size: Optional[int]=None) -> None:
         """
         Note: kernel_sizes, strides, and paddings all take a tuple of 2 integers,
         where the first element is the value for the 2d conv layer, and the
@@ -44,21 +44,21 @@ class Conv2_1d(nn.Module):
         # shape [b, t, c, h, w]
         # 2d conv layer
         b, t, c, h, w = x.size()
-        x = x.view(b * t, c, h, w)
+        x = x.reshape(b * t, c, h, w)
         x = self.conv2d(x)
         x = self.relu(x)
 
         # 1d conv layer
         c, h, w = x.size(1), x.size(2), x.size(3)
-        x = x.view(b, t, c, h, w)
+        x = x.reshape(b, t, c, h, w)
         x = x.permute(0, 3, 4, 2, 1) # shape [b, h, w, c, t]
-        x = x.view(b * h * w, c, t)
+        x = x.reshape(b * h * w, c, t)
         x = self.conv1d(x)
         output = self.relu(x)
 
         # Output
         c, t = output.size(1), output.size(2)
-        output = output.view(b, h, w, c, t)
+        output = output.reshape(b, h, w, c, t)
         output = output.permute(0, 4, 3, 1, 2) # shape [b, t, c, h, w]
         
         return output
@@ -99,8 +99,7 @@ class GIFClassifier(nn.Module):
         x = self.conv5(x)
 
         # fc layers
-        b = x.size(1)
-        x = x.view(b, -1)
+        x = x.flatten(1)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
