@@ -10,9 +10,9 @@ class Conv2_1d(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  kernel_size: Tuple[int, int],
+                 hidden_size: Optional[int]=None,
                  stride: Tuple[int, int]=(1, 1),
-                 padding: Tuple[int, int]=(0, 0),
-                 hidden_size: Optional[int]=None) -> None:
+                 padding: Tuple[int, int]=(0, 0),) -> None:
         """
         Note: kernel_sizes, strides, and paddings all take a tuple of 2 integers,
         where the first element is the value for the 2d conv layer, and the
