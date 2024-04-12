@@ -112,5 +112,5 @@ def train(model: nn.Module,
                         plot=plot,
                         plot_every=plot_every)
         
-        torch.save(model.state_dict(), '2_1d_model.pth')
+    torch.save(model.state_dict(), '2_1d_model.pth')
     
