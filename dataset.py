@@ -49,7 +49,7 @@ class GIFDataset(Dataset):
         target = self.gif_df.iloc[idx, 1]
 
         # Shape (40, 3, 500, 500) and (40, 500, 500)
-        gif_tensor, attention_mask = load_gif(gif_url)
+        gif_tensor, attention_mask, is_resized = load_gif(gif_url)
         
         # Tuple of three sets of strings
         (subjects, actions, objects) = target_to_subjects_and_objects(target)
@@ -70,4 +70,5 @@ gif_dataset = GIFDataset()
 gif_loader = DataLoader(gif_dataset, batch_size=1, shuffle=False)
 
 for i, sample in enumerate(gif_loader):
-    print(i)
+    print(sample['gif'].shape)
+    break
