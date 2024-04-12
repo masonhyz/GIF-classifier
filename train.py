@@ -111,6 +111,8 @@ def train(model: nn.Module,
                         criterion=criterion,
                         plot=plot,
                         plot_every=plot_every)
+        
+        torch.save(model.state_dict(), '2_1d_model.pth')
     
 
 def main():
@@ -118,8 +120,6 @@ def main():
     train_data = GIFDataset()
     val_data = GIFDataset()
     train(model, train_data, val_data)
-
-    torch.save(model.state_dict(), '2_1d_model.pth')
 
 
 if __name__ == '__main__':
