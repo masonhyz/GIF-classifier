@@ -114,13 +114,3 @@ def train(model: nn.Module,
         
         torch.save(model.state_dict(), '2_1d_model.pth')
     
-
-def main():
-    model = GIFClassifier()
-    train_data = GIFDataset()
-    val_data = GIFDataset()
-    train(model, train_data, val_data)
-
-
-if __name__ == '__main__':
-    main()
