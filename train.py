@@ -5,48 +5,56 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from model import GIFClassifier
+from model_2_1dconv import GIFClassifier
+from dataset import GIFDataset
 
 from typing import Tuple
 
 def train_one_epoch(model: nn.Module,
-                    train_data: DataLoader,
-                    val_data: DataLoader,
+                    train_data: GIFDataset,
+                    val_data: GIFDataset,
+                    batch_size: int,
                     optimizer: torch.optim.Optimizer,
                     criterion: nn.Module,
-                    plot_every: int=50):
+                    plot: bool,
+                    plot_every: int):
     
     model.train()
 
     num_iters = []
     train_losses = []
-    val_losses = []
     train_accs = []
     val_accs = []
 
-    for i, (data, label) in tqdm(enumerate(train_data), desc='Epoch'):
-        logits = model(data)
-        loss = criterion(logits, label)
+    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+
+    for i, sample in tqdm(enumerate(train_dataloader), desc='Epoch'):
+        inputs = sample['gif']
+        labels = sample['target']
+        logits = model(inputs)
+        loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
-        if i % plot_every == 0:
+        if plot and i % plot_every == 0:
             num_iters.append(i)
-            train_loss, train_acc = evaluate(model, train_data)
-            val_loss, val_acc = evaluate(model, val_data)
+            train_loss = loss.item()
+            train_acc = get_accuracy(model, train_data)
+            val_acc = get_accuracy(model, val_data)
             train_losses.append(train_loss)
             train_accs.append(train_acc)
-            val_losses.append(val_loss)
             val_accs.append(val_acc)
+
+            print(f'Iteration {i} training loss: {train_loss}, training accuracy: {train_acc}, validation accuracy: {val_acc}')
+
+            model.train()
 
     plt.figure()
     plt.plot(num_iters, train_losses)
-    plt.plot(num_iters, val_losses)
     plt.xlabel('Number of Iterations')
     plt.ylabel('Loss')
     plt.title('Loss vs. Number of Iterations')
-    plt.legend(['Train', 'Validation'])
     plt.show()
 
     plt.figure()
@@ -60,39 +68,55 @@ def train_one_epoch(model: nn.Module,
 
 
 @torch.no_grad()
-def evaluate(model: nn.Module,
-             data: DataLoader) -> Tuple[float, float]:
+def get_accuracy(model: nn.Module,
+                 data: GIFDataset) -> Tuple[float, float]:
     
-    """TODO"""
     model.eval()
-    loss = 1.0
-    acc = 1.0
+    dataloader = DataLoader(data, batch_size=256)
+    
+    count = 0
+    total = 0
+    for sample in dataloader:
+        inputs = sample['gif']
+        labels = sample['target']
+        
+        logits = model(inputs)
+        preds = torch.argmax(logits, 1)
+        count += torch.sum(preds == labels)
+        total += inputs.size(0)
 
-    model.train()
-    return loss, acc
+    return count / total
 
 
 def train(model: nn.Module,
-          train_data: DataLoader,
-          val_data: DataLoader,
+          train_data: GIFDataset,
+          val_data: GIFDataset,
+          batch_size: int=64,
           num_epochs: int=10,
-          lr: float=0.001):
+          lr: float=0.001,
+          weight_decay: int=0.0,
+          plot: bool=True,
+          plot_every: int=50):
     
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
 
-    for _ in range(num_epochs):
+    for i in range(num_epochs):
+        print(f'Training epoch {i + 1}.')
         train_one_epoch(model,
                         train_data,
                         val_data,
-                        optimizer,
-                        criterion)
+                        batch_size=batch_size,
+                        optimizer=optimizer,
+                        criterion=criterion,
+                        plot=plot,
+                        plot_every=plot_every)
     
 
 def main():
     model = GIFClassifier()
-    train_data = DataLoader()
-    val_data = DataLoader()
+    train_data = GIFDataset()
+    val_data = GIFDataset()
     train(model, train_data, val_data)
 
 
