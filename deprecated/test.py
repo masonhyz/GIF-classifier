@@ -1,5 +1,5 @@
 import unittest
-from preprocess import main, process_gif
+from preprocessing.preprocess import main, process_gif
 import h5py
 import pandas as pd
 import os
