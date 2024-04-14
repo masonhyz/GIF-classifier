@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from model_2_1dconv import GIFClassifier
 from dataset import GIFDataset
 import time
+import os
 
 def train_one_epoch(model: nn.Module,
                     train_data: GIFDataset,
@@ -36,34 +37,37 @@ def train_one_epoch(model: nn.Module,
         optimizer.step()
         optimizer.zero_grad()
 
-        if plot and i % plot_every == 0:
+        if i % plot_every == 0:
             num_iters.append(i)
             train_loss = loss.item()
             train_acc = get_accuracy(model, train_data)
             val_acc = get_accuracy(model, val_data)
-            train_losses.append(train_loss)
-            train_accs.append(train_acc)
-            val_accs.append(val_acc)
 
             print(f'Iteration {i} training loss: {train_loss}, training accuracy: {train_acc}, validation accuracy: {val_acc}')
 
+            if plot:
+                train_losses.append(train_loss)
+                train_accs.append(train_acc)
+                val_accs.append(val_acc)
+
             model.train()
 
-    plt.figure()
-    plt.plot(num_iters, train_losses)
-    plt.xlabel('Number of Iterations')
-    plt.ylabel('Loss')
-    plt.title('Loss vs. Number of Iterations')
-    plt.show()
+    if plot:
+        plt.figure()
+        plt.plot(num_iters, train_losses)
+        plt.xlabel('Number of Iterations')
+        plt.ylabel('Loss')
+        plt.title('Loss vs. Number of Iterations')
+        plt.show()
 
-    plt.figure()
-    plt.plot(num_iters, train_accs)
-    plt.plot(num_iters, val_accs)
-    plt.xlabel('Number of Iterations')
-    plt.ylabel('Accuracy')
-    plt.title('Accuracy vs. Number of Iterations')
-    plt.legend(['Train', 'Validation'])
-    plt.show()
+        plt.figure()
+        plt.plot(num_iters, train_accs)
+        plt.plot(num_iters, val_accs)
+        plt.xlabel('Number of Iterations')
+        plt.ylabel('Accuracy')
+        plt.title('Accuracy vs. Number of Iterations')
+        plt.legend(['Train', 'Validation'])
+        plt.show()
 
 
 @torch.no_grad()
@@ -81,7 +85,7 @@ def get_accuracy(model: nn.Module,
         
         logits = model(inputs)
         preds = (logits >= 0).to(torch.long)
-        match = torch.any(torch.isclose(preds, labels), dim=1)
+        match = torch.all(preds == labels, dim=1)
         count += torch.sum(match)
         total += inputs.size(0)
 
@@ -92,14 +96,18 @@ def train(model: nn.Module,
           train_data: GIFDataset,
           val_data: GIFDataset,
           batch_size: int=64,
-          num_epochs: int=10,
+          num_epochs: int=100,
           lr: float=0.001,
           weight_decay: int=0.0,
           plot: bool=True,
-          plot_every: int=50):
+          plot_every: int=50,
+          save_every: int=10):
     
     criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
+    
+    if not os.path.exists('checkpoints'):
+        os.makedirs('checkpoints')
 
     for i in range(num_epochs):
         print(f'Training epoch {i + 1}.')
@@ -112,5 +120,16 @@ def train(model: nn.Module,
                         plot=plot,
                         plot_every=plot_every)
         
-    torch.save(model.state_dict(), '2_1d_model.pth')
+        if i % save_every == 0:
+            torch.save(model.state_dict(), f'checkpoints/model_epoch{i}.pth')
     
+
+def main():
+    train_data = GIFDataset()
+    val_data = GIFDataset()
+    model = GIFClassifier(17)
+    train(model, train_data, val_data)
+
+
+if __name__ == '__main__':
+    main()

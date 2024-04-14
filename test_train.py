@@ -31,7 +31,7 @@ class GIFClassifier(nn.Module):
         return logits
 
 dataset = GIFDataset()
-train_dataset = Subset(dataset, range(10))
-val_dataset = Subset(dataset, range(10, 15))
+train_dataset = Subset(dataset, range(2))
+val_dataset = Subset(dataset, [3])
 model = GIFClassifier(17)
-train(model, train_dataset, val_dataset, batch_size=2, num_epochs=1, plot_every=1)
+train(model, train_dataset, val_dataset, batch_size=2, num_epochs=100, plot=False)

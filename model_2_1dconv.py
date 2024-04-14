@@ -74,22 +74,22 @@ class GIFClassifier(nn.Module):
         # general shape [b, t, c, h, w]
         # input shape [b, 50, 3, 500, 500]
 
-        # shape [b, 24, 64, 164, 164]
-        self.conv1 = Conv2_1d(3, 64, kernel_size=(9, 3), stride=(3, 2))
-        # shape [b, 12, 128, 80, 80]
-        self.conv2 = Conv2_1d(64, 128, kernel_size=(5, 2), stride=(2, 2))
-        # shape [b, 6, 256, 38, 38]
-        self.conv3 = Conv2_1d(128, 256, kernel_size=(5, 2), stride=(2, 2))
-        # shape [b, 2, 256, 18, 18]
-        self.conv4 = Conv2_1d(256, 256, kernel_size=(3, 3), stride=(2, 2))
-        # shape [b, 1, 128, 8, 8]
-        self.conv5 = Conv2_1d(256, 128, kernel_size=(3, 2), stride=(2, 1))
+        # shape [b, 24, 32, 164, 164]
+        self.conv1 = Conv2_1d(3, 32, kernel_size=(9, 3), stride=(3, 2))
+        # shape [b, 12, 64, 80, 80]
+        self.conv2 = Conv2_1d(32, 64, kernel_size=(5, 2), stride=(2, 2))
+        # shape [b, 6, 128, 38, 38]
+        self.conv3 = Conv2_1d(64, 128, kernel_size=(5, 2), stride=(2, 2))
+        # shape [b, 2, 128, 18, 18]
+        self.conv4 = Conv2_1d(128, 128, kernel_size=(3, 3), stride=(2, 2))
+        # shape [b, 1, 64, 8, 8]
+        self.conv5 = Conv2_1d(128, 64, kernel_size=(3, 2), stride=(2, 1))
 
         self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(128 * 8 * 8, 8192)
-        self.fc2 = nn.Linear(8192, 4096)
-        self.fc3 = nn.Linear(4096, 2048)
-        self.out = nn.Linear(2048, num_classes)
+        self.fc1 = nn.Linear(64 * 8 * 8, 4096)
+        self.fc2 = nn.Linear(4096, 2048)
+        self.fc3 = nn.Linear(2048, 1024)
+        self.out = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         # 2+1d conv layers
