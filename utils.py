@@ -40,17 +40,14 @@ def __resize_gif_frame(rgb_frame, frame):
         target_height = min(MAX_HEIGHT, original_height)
         # print(f"Resizing frame from {original_width}x{original_height} to {target_width}x{target_height}")
         resized_frame = __crop_gif_frame(frame, target_width, target_height)
-        is_resized = True
         assert resized_frame.size == (target_width, target_height)
     else:
         resized_frame = rgb_frame
-        is_resized = False
-    return resized_frame, is_resized
+    return resized_frame
 
 
-def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
-    response = requests.get(path)
-    gif_data = BytesIO(response.content)
+def load_gif(gif_data, target_num_frames=TARGET_NUM_FRAMES):
+    gif_data = BytesIO(gif_data)
     gif = Image.open(gif_data)
 
     frames_as_tensors = []
@@ -61,7 +58,7 @@ def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
         # frame.show()
         rgb_frame = frame.convert("RGB")
 
-        resized_frame, is_resized = __resize_gif_frame(rgb_frame, frame)
+        resized_frame = __resize_gif_frame(rgb_frame, frame)
 
         mask = torch.ones((resized_frame.size[1], resized_frame.size[0]))
 
@@ -85,7 +82,7 @@ def load_gif(path, target_num_frames=TARGET_NUM_FRAMES):
     attention_mask = torch.stack(attention_masks, dim=0)
     assert gif_tensor.shape == (target_num_frames, 3, MAX_HEIGHT, MAX_WIDTH)
     assert attention_mask.shape == (target_num_frames, MAX_HEIGHT, MAX_WIDTH)
-    return gif_tensor, attention_mask, is_resized
+    return gif_tensor, attention_mask
 
 
 if __name__ == "__main__":
@@ -111,10 +108,10 @@ def target_to_subjects_and_objects(target_str: str) -> tuple[set[str], set[str]]
             subjects.add(token.text)
         elif token.pos_ == "VERB":
             actions.add(token.text)
-        elif "obj" in token.dep_:
-            objects.add(token.text)
+        # elif "obj" in token.dep_:
+        #     objects.add(token.text)
 
-    return subjects, actions, objects
+    return subjects, actions
 
 
 def get_subj_obj_frequency():
