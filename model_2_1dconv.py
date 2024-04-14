@@ -69,6 +69,7 @@ class GIFClassifier(nn.Module):
 
     def __init__(self, num_classes) -> None:
         super(GIFClassifier, self).__init__()
+        self.num_classes = num_classes
 
         # general shape [b, t, c, h, w]
         # input shape [b, 50, 3, 500, 500]

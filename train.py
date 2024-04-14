@@ -7,8 +7,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from model_2_1dconv import GIFClassifier
 from dataset import GIFDataset
-
-from typing import Tuple
+import time
 
 def train_one_epoch(model: nn.Module,
                     train_data: GIFDataset,
@@ -30,7 +29,7 @@ def train_one_epoch(model: nn.Module,
 
     for i, sample in tqdm(enumerate(train_dataloader), desc='Epoch'):
         inputs = sample['gif']
-        labels = sample['target']
+        labels = torch.stack(sample['target']).transpose(0, 1)
         logits = model(inputs)
         loss = criterion(logits, labels)
         loss.backward()
@@ -69,7 +68,7 @@ def train_one_epoch(model: nn.Module,
 
 @torch.no_grad()
 def get_accuracy(model: nn.Module,
-                 data: GIFDataset) -> Tuple[float, float]:
+                 data: GIFDataset) -> float:
     
     model.eval()
     dataloader = DataLoader(data, batch_size=256)
@@ -78,11 +77,12 @@ def get_accuracy(model: nn.Module,
     total = 0
     for sample in dataloader:
         inputs = sample['gif']
-        labels = sample['target']
+        labels = torch.stack(sample['target']).transpose(0, 1)
         
         logits = model(inputs)
-        preds = torch.argmax(logits, 1)
-        count += torch.sum(preds == labels)
+        preds = (logits >= 0).to(torch.long)
+        match = torch.any(torch.isclose(preds, labels), dim=1)
+        count += torch.sum(match)
         total += inputs.size(0)
 
     return count / total
@@ -98,7 +98,7 @@ def train(model: nn.Module,
           plot: bool=True,
           plot_every: int=50):
     
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
 
     for i in range(num_epochs):
