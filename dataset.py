@@ -78,10 +78,10 @@ class GIFDataset(Dataset):
         }
         return sample
 
+if __name__ == '__main__':
+    dataset = GIFDataset()
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-dataset = GIFDataset()
-dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
-
-for i_batch, sample_batched in enumerate(dataloader):
-    if i_batch == 3:
-        break
+    for i_batch, sample_batched in enumerate(dataloader):
+        if i_batch == 3:
+            break
