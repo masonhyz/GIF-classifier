@@ -3,13 +3,14 @@ import torch
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader,Subset
 import os
 from utils import load_gif, target_to_subjects_and_objects, get_gif_len
 from collections import defaultdict
 import json
 import h5py
 from preprocessing.preprocess import ACTIONS, SUBJECTS
+from sklearn.model_selection import train_test_split
 
 import warnings
 
@@ -77,6 +78,15 @@ class GIFDataset(Dataset):
             "target": target_vector,
         }
         return sample
+    
+def train_val_sklearn_split(dataset: GIFDataset, test_size=0.2):
+    indices = list(range(len(dataset)))
+    train_indices, val_indices = train_test_split(indices, test_size=test_size, random_state=42)
+
+    train_set = Subset(dataset, train_indices)
+    val_set = Subset(dataset, val_indices)
+
+    return train_set, val_set
 
 if __name__ == '__main__':
     dataset = GIFDataset()
