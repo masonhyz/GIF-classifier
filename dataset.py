@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader,Subset
 import os
 from utils import load_gif, target_to_subjects_and_objects, get_gif_len
+from utils_new import load_gif_compressed
 from collections import defaultdict
 import json
 import h5py
@@ -63,7 +64,7 @@ class GIFDataset(Dataset):
             idx = idx.tolist()
 
         gif_data, target = self.data[idx]
-        gif_tensor, attention_mask = load_gif(gif_data)
+        gif_tensor, attention_mask = load_gif_compressed(gif_data)
 
         # Tuple of three sets of strings
         (subjects, actions) = target_to_subjects_and_objects(target)
@@ -90,6 +91,7 @@ def train_val_sklearn_split(dataset: GIFDataset, test_size=0.2):
 
 if __name__ == '__main__':
     dataset = GIFDataset()
+    train_split, val_split = train_val_sklearn_split(dataset, test_size=0.2)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     for i_batch, sample_batched in enumerate(dataloader):
