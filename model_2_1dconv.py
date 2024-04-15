@@ -104,7 +104,6 @@ class GIFClassifier(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = self.conv4(x)
 
         # fc layers
         x = x.flatten(1)
