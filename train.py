@@ -92,7 +92,7 @@ def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
 
 def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, plot_every: int = 50, save_every: int = 10):
 
-    criterion = nn.MultiLabelSoftMarginLoss()
+    criterion = nn.MultiLabelSoftMarginLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
 
     if not os.path.exists("checkpoints"):
