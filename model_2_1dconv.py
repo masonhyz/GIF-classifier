@@ -88,13 +88,11 @@ class GIFClassifier(nn.Module):
         # input shape [b, 50, 3, 500, 500]
 
         # shape [b, 12, 32, 125, 125]
-        self.conv1 = Conv2_1d(3, 32, kernel_size=(11, 3, 4, 4), stride=(1, 1, 4, 4), padding=(10, 2, 0, 0))
+        self.conv1 = Conv2_1d(3, 32, kernel_size=(7, 3, 4, 4), stride=(1, 1, 4, 4), padding=(6, 2, 0, 0))
         # shape [b, 6, 64, 31, 31]
         self.conv2 = Conv2_1d(32, 64, kernel_size=(5, 3, 4, 2), stride=(1, 1, 4, 2), padding=(4, 2, 0, 0))
-        # shape [b, 3, 128, 15, 15]
-        self.conv3 = Conv2_1d(64, 128, kernel_size=(3, 3, 2, 2), stride=(1, 1, 2, 2), padding=(2, 2, 0, 0))
         # shape [b, 3, 64, 7, 7]
-        self.conv4 = Conv2_1d(128, 64, kernel_size=(3, 1, 2, 1), stride=(1, 1, 2, 2), padding=(2, 0, 0, 0))
+        self.conv3 = Conv2_1d(64, 64, kernel_size=(3, 3, 4, 2), stride=(1, 1, 4, 2), padding=(2, 2, 0, 0))
 
         self.relu = nn.ReLU()
         self.fc1 = nn.Linear(9408, 4096)
