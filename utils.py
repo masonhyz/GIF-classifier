@@ -83,77 +83,39 @@ def load_gif(gif_data, target_num_frames=TARGET_NUM_FRAMES):
     assert gif_tensor.shape == (target_num_frames, 3, MAX_HEIGHT, MAX_WIDTH)
     assert attention_mask.shape == (target_num_frames, MAX_HEIGHT, MAX_WIDTH)
     return gif_tensor, attention_mask
+    
 
-
-if __name__ == "__main__":
-    # get_subj_obj_frequency()
-    # load_subject_object_frequency()
-    pass
-        
-
-
-def target_to_subjects_and_objects(target_str: str) -> tuple[set[str], set[str]]:
+def target_to_subjects_and_objects(target_str: str):
     """
     subjects: the person or objects performing the action
     objects: the person or objects that the action is being performed on
     """
     doc = nlp(target_str)
 
-    subjects = set()
-    actions = set()
-    objects = set()
+    actions = []
 
     for token in doc:
-        if "subj" in token.dep_:
-            subjects.add(token.text)
-        elif token.pos_ == "VERB":
-            actions.add(token.text)
-        # elif "obj" in token.dep_:
-        #     objects.add(token.text)
+        if token.pos_ == "VERB":
+            actions.append(token.text)
 
-    return subjects, actions
+    if len(actions) != 1:
+        return None
+    return actions
 
 
 def get_subj_obj_frequency():
     data = pd.read_csv("data/tgif-v1.0.tsv", sep="\t")
-    subjs = defaultdict(int)
     acts = defaultdict(int)
-    objs = defaultdict(int)
     for _, row in tqdm(data.iterrows(), total=data.shape[0]):
         target = row[1]
-        subjects, actions, objects = target_to_subjects_and_objects(target)
-        for subj in subjects:
-            subjs[subj] += 1
-        for act in actions:
-            acts[act] += 1
-        for obj in objects:
-            objs[obj] += 1
-
-    with open("subj_obj_data/subject_frequency.json", "w") as f:
-        json.dump(subjs, f, ensure_ascii=False, indent=4)
-
-    with open("subj_obj_data/object_frequency.json", "w") as f:
-        json.dump(objs, f, ensure_ascii=False, indent=4)
-
+        actions = target_to_subjects_and_objects(target)
+        if actions is not None:
+            acts[actions[0]] += 1
+            
     with open("subj_obj_data/action_frequency.json", "w") as f:
         json.dump(acts, f, ensure_ascii=False, indent=4)
 
-
-def load_subject_object_frequency():
-    with open("subj_obj_data/subject_frequency.json") as f:
-        subj_freq = json.load(f)
-
-    with open("subj_obj_data/object_frequency.json") as f:
-        obj_freq = json.load(f)
-
-    with open("subj_obj_data/action_frequency.json") as f:
-        act_freq = json.load(f)
-
-    return subj_freq, act_freq, obj_freq
-
-
-def get_gif_len(gif_url):
-    response = requests.get(gif_url)
-    gif_data = BytesIO(response.content)
-    gif = Image.open(gif_data)
-    return len(list(ImageSequence.Iterator(gif)))
+if __name__ == "__main__":
+    # get_subj_obj_frequency()
+    # load_subject_object_frequency()
+    get_subj_obj_frequency()

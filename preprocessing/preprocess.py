@@ -5,22 +5,19 @@ import os
 import requests
 from tqdm import tqdm
 
-SUBJECTS = ["man", "woman", "people", "cat", "dog", "car", "boy", "girl", "men"]
-ACTIONS = ["looking", "dancing", "walking", "smiling", "playing", "standing", "wearing", "holding"]
+ACTIONS = {'dancing', 'playing', 'walking', 'looking', 'talking', 'singing', 'doing', 'kissing', 'holding', 'running'}
 HDF5_FILE = "preprocessing/processed_data.hdf5"
 
 data_file = "data/tgif-v1.0.tsv"
 data = pd.read_csv(data_file, sep="\t")
 
 
-def contains_subject_and_action(text: str):
+def contains_single_action_in_list(text: str):
     words = text.lower().split()
-    has_subject = any(word in SUBJECTS for word in words)
-    has_action = any(word in ACTIONS for word in words)
-    return has_subject and has_action
+    return sum(word in ACTIONS for word in words) == 1
 
 
-subset_data = data[data.iloc[:, 1].apply(contains_subject_and_action)]
+subset_data = data[data.iloc[:, 1].apply(contains_single_action_in_list)]
 print(subset_data.shape)
 
 
@@ -37,13 +34,6 @@ def load_progress(hdf5_file):
         print(f"Error reading HDF5 file: {e}")
         os.remove(hdf5_file)  # Remove corrupted file
         return 0  # Start from scratch
-
-
-def contains_subject_and_action(text: str):
-    words = text.lower().split()
-    has_subject = any(word in SUBJECTS for word in words)
-    has_action = any(word in ACTIONS for word in words)
-    return has_subject and has_action
 
 
 def preprocess(start_index, data: pd.DataFrame, hdf5_file):

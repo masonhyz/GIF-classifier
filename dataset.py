@@ -64,6 +64,7 @@ class GIFDataset(Dataset):
             idx = idx.tolist()
 
         gif_data, target = self.data[idx]
+        # (num_frames, 3, h, w) and (num_frames, h, w)
         gif_tensor, attention_mask = load_gif_compressed(gif_data)
 
         # Tuple of three sets of strings
