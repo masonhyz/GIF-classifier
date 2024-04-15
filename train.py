@@ -9,6 +9,12 @@ from dataset import GIFDataset, train_val_sklearn_split
 import time
 import os
 
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+print(f'Training on {device}')
+
 
 def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int, optimizer: torch.optim.Optimizer, criterion: nn.Module, plot: bool, plot_every: int):
 
@@ -22,8 +28,8 @@ def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDatas
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
     for i, sample in tqdm(enumerate(train_dataloader), desc="Epoch"):
-        inputs = sample["gif"]
-        labels = torch.stack(sample["target"]).transpose(0, 1)
+        inputs = sample["gif"].to(device)
+        labels = torch.stack(sample["target"]).transpose(0, 1).to(device)
         logits = model(inputs)
         loss = criterion(logits, labels)
         loss.backward()
@@ -72,8 +78,8 @@ def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
     count = 0
     total = 0
     for sample in dataloader:
-        inputs = sample["gif"]
-        labels = torch.stack(sample["target"]).transpose(0, 1)
+        inputs = sample["gif"].to(device)
+        labels = torch.stack(sample["target"]).transpose(0, 1).to(device)
 
         logits = model(inputs)
         preds = (logits >= 0).to(torch.long)
@@ -103,7 +109,7 @@ def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_
 def main():
     dataset = GIFDataset()
     train_data, val_data = train_val_sklearn_split(dataset, test_size=0.2)
-    model = GIFClassifier(17)
+    model = GIFClassifier(17).to(device)
     train(model, train_data, val_data)
 
 
