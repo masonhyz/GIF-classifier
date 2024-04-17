@@ -12,8 +12,8 @@ class GIFClassifier(nn.Module):
         self.conv3 = nn.Conv3d(32, 16, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.pool3 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
 
-        self.fc1 = nn.Linear(4096, 2048)
-        self.out = nn.Linear(2048, num_classes)
+        self.fc1 = nn.Linear(2048, 1024)
+        self.out = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         # input shape [b, 40, 3, 128, 128]
