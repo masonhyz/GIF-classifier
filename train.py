@@ -1,7 +1,7 @@
 import torch
 
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from model_3dconv import GIFClassifier
@@ -10,6 +10,7 @@ import time
 import os
 
 num_classes = 10
+start_epoch = 0
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -41,8 +42,8 @@ def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDatas
 
         if i % eval_every == 0:
             train_loss = loss.item()
-            train_acc = get_accuracy(model, train_data)
-            val_acc = get_accuracy(model, val_data)
+            train_acc = estimate_accuracy(model, train_data)
+            val_acc = estimate_accuracy(model, val_data)
 
             print(f"Iteration {i} training loss: {train_loss}, training accuracy: {train_acc}, validation accuracy: {val_acc}")
 
@@ -73,14 +74,15 @@ def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDatas
 
 
 @torch.no_grad()
-def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
+def estimate_accuracy(model: nn.Module, data: GIFDataset) -> float:
 
     model.eval()
-    dataloader = DataLoader(data, batch_size=128)
+    subset = Subset(data, torch.randint(high=len(data), size=(len(data) // 10 + 1,)))
+    dataloader = DataLoader(subset, batch_size=128)
 
     count = 0
     total = 0
-    for sample in dataloader:
+    for sample in tqdm(dataloader, desc='Evaluation'):
         inputs = sample["gif"].to(device)
         labels = torch.argmax(torch.stack(sample["target"]), dim=0).to(device)
 
@@ -92,7 +94,7 @@ def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
     return count / total
 
 
-def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 10):
+def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 5, start_epoch=0):
 
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
@@ -103,7 +105,7 @@ def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_
     if plot and not os.path.exists('training_plots'):
         os.makedirs('training_plots')
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, start_epoch + num_epochs):
         print(f"Training epoch {epoch}.")
         train_one_epoch(model, train_data, val_data, batch_size=batch_size, optimizer=optimizer, criterion=criterion, eval_every=eval_every, plot=plot, epoch=epoch)
 
@@ -111,11 +113,17 @@ def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_
             torch.save(model.state_dict(), f"checkpoints/model_epoch{epoch}.pth")
 
 
+def load_model(start_epoch: int=0) -> GIFClassifier:
+    if start_epoch == 0:
+        return GIFClassifier(num_classes).to(device)
+    return GIFClassifier(num_classes).to(device).load_state_dict(torch.load(f'checkpoints/model_epoch{start_epoch}.pth'))
+
+
 def main():
     dataset = GIFDataset()
     train_data, val_data = train_val_sklearn_split(dataset, test_size=0.2)
-    model = GIFClassifier(num_classes).to(device)
-    train(model, train_data, val_data)
+    model = load_model(start_epoch=start_epoch)
+    train(model, train_data, val_data, start_epoch=start_epoch)
 
 
 if __name__ == "__main__":
