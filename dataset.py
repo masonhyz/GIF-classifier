@@ -21,9 +21,6 @@ warnings.filterwarnings("ignore")
 
 CURR_DIR = os.path.dirname(os.path.realpath(__file__))
 
-subset_data = pd.read_csv("data/subset_data.csv")
-first_url = subset_data.iloc[0]["gif_url"]
-
 
 class GIFDataset(Dataset):
     """GIF dataset"""
