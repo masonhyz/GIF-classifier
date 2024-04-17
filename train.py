@@ -82,9 +82,8 @@ def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
         labels = torch.stack(sample["target"]).transpose(0, 1).to(device)
 
         logits = model(inputs)
-        preds = (logits >= 0).to(torch.long)
-        match = torch.all(preds == labels, dim=1)
-        count += torch.sum(match)
+        preds = torch.argmax(logits, 1)
+        count += torch.sum(preds == labels)
         total += inputs.size(0)
 
     return count / total
@@ -92,7 +91,7 @@ def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
 
 def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, plot_every: int = 50, save_every: int = 10):
 
-    criterion = nn.MultiLabelSoftMarginLoss().to(device)
+    criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
 
     if not os.path.exists("checkpoints"):

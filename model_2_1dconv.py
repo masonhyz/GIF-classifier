@@ -85,17 +85,17 @@ class GIFClassifier(nn.Module):
         self.num_classes = num_classes
 
         # general shape [b, t, c, h, w]
-        # input shape [b, 50, 3, 500, 500]
+        # input shape [b, 40, 3, 128, 128]
 
-        # shape [b, 12, 32, 125, 125]
-        self.conv1 = Conv2_1d(3, 32, kernel_size=(7, 3, 4, 4), stride=(1, 1, 4, 4), padding=(6, 2, 0, 0))
-        # shape [b, 6, 64, 31, 31]
-        self.conv2 = Conv2_1d(32, 64, kernel_size=(5, 3, 4, 2), stride=(1, 1, 4, 2), padding=(4, 2, 0, 0))
-        # shape [b, 3, 64, 7, 7]
-        self.conv3 = Conv2_1d(64, 64, kernel_size=(3, 3, 4, 2), stride=(1, 1, 4, 2), padding=(2, 2, 0, 0))
+        # shape [b, 10, 32, 32, 32]
+        self.conv1 = Conv2_1d(3, 32, kernel_size=(5, 3, 4, 4), stride=(1, 1, 4, 4), padding=(2, 1, 0, 0))
+        # shape [b, 5, 64, 16, 16]
+        self.conv2 = Conv2_1d(32, 64, kernel_size=(3, 3, 2, 2), stride=(1, 1, 2, 2), padding=(1, 1, 0, 0))
+        # shape [b, 2, 32, 8, 8]
+        self.conv3 = Conv2_1d(64, 32, kernel_size=(3, 3, 2, 2), stride=(1, 1, 2, 2), padding=(1, 1, 0, 0))
 
         self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(9408, 4096)
+        self.fc1 = nn.Linear(4096, 4096)
         self.fc2 = nn.Linear(4096, 2048)
         self.out = nn.Linear(2048, num_classes)
 
