@@ -8,18 +8,8 @@ from tqdm import tqdm
 ACTIONS = {'dancing', 'playing', 'walking', 'looking', 'talking', 'singing', 'doing', 'kissing', 'holding', 'running'}
 HDF5_FILE = "preprocessing/processed_data.hdf5"
 
-data_file = "data/tgif-v1.0.tsv"
-data = pd.read_csv(data_file, sep="\t")
-
-
-def contains_single_action_in_list(text: str):
-    words = text.lower().split()
-    return sum(word in ACTIONS for word in words) == 1
-
-
-subset_data = data[data.iloc[:, 1].apply(contains_single_action_in_list)]
-print(subset_data.shape)
-
+subset_file = "data/subset_data.csv"
+subset_data = pd.read_csv(subset_file)
 
 def load_progress(hdf5_file):
     if not os.path.exists(hdf5_file) or os.path.getsize(hdf5_file) == 0:
@@ -37,7 +27,7 @@ def load_progress(hdf5_file):
 
 
 def preprocess(start_index, data: pd.DataFrame, hdf5_file):
-    with h5py.File(hdf5_file, "a") as h5f:
+    with h5py.File(hdf5_file, "w") as h5f:
         gif_group = h5f.require_group("gif_data")
         target_group = h5f.require_group("targets")
 
@@ -47,6 +37,7 @@ def preprocess(start_index, data: pd.DataFrame, hdf5_file):
             dataset_name = f"{start_index + i}"
             gif_group.create_dataset(dataset_name, data=np.frombuffer(gif_data, dtype=np.uint8))
             target_group.create_dataset(dataset_name, data=target.encode("utf-8"))
+            break
 
 
 def main(data=subset_data, hdf5_file=HDF5_FILE):

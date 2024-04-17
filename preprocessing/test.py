@@ -9,7 +9,6 @@ from io import BytesIO
 import unittest
 import os
 import h5py
-from preprocess import main, contains_subject_and_action
 import tracemalloc
 from tqdm import tqdm
 
@@ -25,7 +24,7 @@ class TestPreprocess(unittest.TestCase):
             print("No preprocessed data found, running main()")
             return
 
-        data = pd.read_csv("data/tgif-v1.0.tsv", sep="\t")
+        subset_data = pd.read_csv("data/subset_data.csv")
 
         with h5py.File("preprocessing/processed_data.hdf5", "r") as h5f:
 
@@ -34,9 +33,15 @@ class TestPreprocess(unittest.TestCase):
 
             for dataset_name in gif_group.keys():
                 if dataset_name in target_group:
-                    gif_data = gif_group[dataset_name][()]
-                    target_text = target_group[dataset_name][()].decode("utf-8")
-                    self.assertTrue(contains_subject_and_action(target_text))
+                    gif_data = np.array(h5f["gif_data"][dataset_name]).tobytes()
+                    original_data = requests.get(subset_data.iloc[int(dataset_name)]["gif_url"]).content
+                    
+                    h5f_target = target_group[dataset_name][()].decode("utf-8")
+                    original_target = subset_data.iloc[int(dataset_name)]["target"][:-1]
+                    
+                    self.assertEqual(gif_data, original_data)
+                    self.assertEqual(h5f_target, original_target)
+                    
                 else:
                     print(f"Target not found for dataset {dataset_name}")
 
