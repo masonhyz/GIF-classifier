@@ -18,7 +18,7 @@ class GIFClassifier(nn.Module):
 
     def forward(self, x):
         # input shape [b, 40, 3, 128, 128]
-        x = x.permute(0, 2, 1, 4, 5)
+        x = x.permute(0, 2, 1, 3, 4)
 
         x = self.conv1(x)
         x = self.relu(x)
