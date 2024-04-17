@@ -8,6 +8,7 @@ from model_3dconv import GIFClassifier
 from dataset import GIFDataset, train_val_sklearn_split
 import time
 import os
+import numpy as np
 
 num_classes = 10
 start_epoch = 0
@@ -77,7 +78,7 @@ def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDatas
 def estimate_accuracy(model: nn.Module, data: GIFDataset) -> float:
 
     model.eval()
-    subset = Subset(data, torch.randint(high=len(data), size=(len(data) // 10 + 1,)))
+    subset = Subset(data, np.random.choice(len(data), size=len(data) // 10 + 1, replace=False))
     dataloader = DataLoader(subset, batch_size=128)
 
     count = 0
@@ -94,7 +95,7 @@ def estimate_accuracy(model: nn.Module, data: GIFDataset) -> float:
     return count / total
 
 
-def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 5, start_epoch=0):
+def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 20, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 1, start_epoch=0):
 
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
