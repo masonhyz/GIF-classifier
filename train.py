@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from model_2_1dconv import GIFClassifier
+from model_3dconv import GIFClassifier
 from dataset import GIFDataset, train_val_sklearn_split
 import time
 import os
