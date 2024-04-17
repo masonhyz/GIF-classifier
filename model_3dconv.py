@@ -30,6 +30,7 @@ class GIFClassifier(nn.Module):
         x = self.relu(x)
         x = self.pool3(x)
         
+        x = x.flatten(1)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
