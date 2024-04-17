@@ -18,7 +18,7 @@ else:
 print(f'Training on {device}')
 
 
-def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int, optimizer: torch.optim.Optimizer, criterion: nn.Module, eval_every: int, plot: bool):
+def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int, optimizer: torch.optim.Optimizer, criterion: nn.Module, eval_every: int, plot: bool, epoch: int):
 
     model.train()
 
@@ -59,17 +59,17 @@ def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDatas
         plt.plot(num_iters, train_losses)
         plt.xlabel("Number of Iterations")
         plt.ylabel("Loss")
-        plt.title("Loss vs. Number of Iterations")
-        plt.show()
+        plt.title(f"Loss vs. Number of Iterations in Epoch {epoch}")
+        plt.savefig(f'training_plots/loss_epoch{epoch}')
 
         plt.figure()
         plt.plot(num_iters, train_accs)
         plt.plot(num_iters, val_accs)
         plt.xlabel("Number of Iterations")
         plt.ylabel("Accuracy")
-        plt.title("Accuracy vs. Number of Iterations")
+        plt.title(f"Accuracy vs. Number of Iterations in Epoch {epoch}")
         plt.legend(["Train", "Validation"])
-        plt.show()
+        plt.savefig(f'training_plots/accuracy_epoch{epoch}')
 
 
 @torch.no_grad()
@@ -99,13 +99,16 @@ def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_
 
     if not os.path.exists("checkpoints"):
         os.makedirs("checkpoints")
+    
+    if plot and not os.path.exists('training_plots'):
+        os.makedirs('training_plots')
 
-    for i in range(num_epochs):
-        print(f"Training epoch {i + 1}.")
-        train_one_epoch(model, train_data, val_data, batch_size=batch_size, optimizer=optimizer, criterion=criterion, eval_every=eval_every, plot=plot)
+    for epoch in range(num_epochs):
+        print(f"Training epoch {epoch}.")
+        train_one_epoch(model, train_data, val_data, batch_size=batch_size, optimizer=optimizer, criterion=criterion, eval_every=eval_every, plot=plot, epoch=epoch)
 
-        if i % save_every == 0:
-            torch.save(model.state_dict(), f"checkpoints/model_epoch{i}.pth")
+        if epoch % save_every == 0:
+            torch.save(model.state_dict(), f"checkpoints/model_epoch{epoch}.pth")
 
 
 def main():
