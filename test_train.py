@@ -4,34 +4,57 @@ from model_2_1dconv import Conv2_1d
 import time
 from train import train
 from dataset import GIFDataset
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import Subset
 
+num_classes = 10
+
+# class GIFClassifier(nn.Module):
+#     """The Gif Classifier Model with stacked 2+1d conv layers."""
+
+#     def __init__(self, num_classes) -> None:
+#         super(GIFClassifier, self).__init__()
+#         self.num_classes = num_classes
+
+#         # general shape [b, t, c, h, w]
+#         # input shape [b, 40, 3, 128, 128]
+
+#         # shape [b, 2, 8, 8, 8]
+#         self.conv = Conv2_1d(3, 8, kernel_size=(3, 3, 16, 20), stride=(1, 1, 16, 20), padding=(1, 1, 0, 0))
+#         self.relu = nn.ReLU()
+#         self.out = nn.Linear(2 * 8 * 8 * 8, num_classes)
+
+#     def forward(self, x):
+#         x = self.conv(x)
+#         x = x.flatten(1)
+#         logits = self.out(x)
+#         return logits
+    
 class GIFClassifier(nn.Module):
-    """The Gif Classifier Model with stacked 2+1d conv layers."""
 
     def __init__(self, num_classes) -> None:
         super(GIFClassifier, self).__init__()
         self.num_classes = num_classes
 
         # general shape [b, t, c, h, w]
-        # input shape [b, 50, 3, 500, 500]
+        # input shape [b, 40, 3, 128, 128]
 
-        # shape [b, 2, 16, 2, 2]
-        self.conv = Conv2_1d(3, 16, kernel_size=(3, 3), stride=(497, 47))
-
+        # shape [b, 2, 8, 8, 8]
+        self.conv = nn.Conv3d(3, 8, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.relu = nn.ReLU()
-
-        self.out = nn.Linear(2 * 16 * 2 * 2, num_classes)
-
+        self.pool = nn.MaxPool3d(kernel_size=(20, 16, 16), stride=(20, 16, 16))
+        self.out = nn.Linear(2 * 8 * 8 * 8, num_classes)
 
     def forward(self, x):
+        x = x.permute(0, 2, 1, 3, 4)
         x = self.conv(x)
+        x = self.relu(x)
+        x = self.pool(x)
         x = x.flatten(1)
         logits = self.out(x)
         return logits
 
 dataset = GIFDataset()
-train_dataset = Subset(dataset, range(2))
-val_dataset = Subset(dataset, [3])
-model = GIFClassifier(17)
-train(model, train_dataset, val_dataset, batch_size=2, num_epochs=100, plot=False)
+train_dataset = Subset(dataset, range(7))
+val_dataset = Subset(dataset, [7])
+model = GIFClassifier(num_classes)
+train(model, train_dataset, val_dataset, batch_size=2, num_epochs=100, eval_every=1)
