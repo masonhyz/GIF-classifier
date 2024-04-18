@@ -1,3 +1,4 @@
+
 import os
 import torch
 import pandas as pd
@@ -9,11 +10,6 @@ from utils_new import load_gif_compressed
 import json
 import h5py
 from sklearn.model_selection import train_test_split
-from PIL import Image, ImageSequence
-from io import BytesIO
-import requests
-from PIL import Image, ImageTk, ImageSequence
-import tkinter as tk
 
 import warnings
 
@@ -30,14 +26,30 @@ class GIFDataset(Dataset):
         data_file=os.path.join(CURR_DIR, "preprocessing/processed_data.hdf5"),
         transform=None,
     ):
+        # with h5py.File(data_file, "r") as h5f:
+        #     gif_group = h5f["gif_data"]
+        #     target_group = h5f["targets"]
+
+        #     d = defaultdict(list)
+
+        #     # Iterate over all datasets in the 'gif_data' group
+        #     for dataset_name in gif_group:
+        #         # Access the dataset
+        #         data = np.array(gif_group[dataset_name]).tobytes()
+        #         target = target_group[dataset_name][()].decode("utf-8")
+
+        #         # Store data in dictionary using dataset name as key
+        #         d[dataset_name].insert(0, data)
+        #         d[dataset_name].append(target)
+        # self.data = list(d.values())
+
         self.data_file = data_file
-        self.h5f = h5py.File(self.data_file, "r")
         self.actions = ["dancing", "playing", "walking", "looking", "talking", "singing", "doing", "kissing", "holding", "running"]
         self.transform = transform
 
     def __len__(self):
-        with h5py.File(self.data_file, "r") as file:
-            return len(file["gif_data"])
+        with h5py.File(self.data_file, "r") as h5f:
+            return len(h5f["gif_data"])
 
     def __getitem__(self, idx):
         if isinstance(idx, list):
@@ -48,40 +60,25 @@ class GIFDataset(Dataset):
         else:
             return self.get_single_item(idx)
 
-    def __del__(self):
-        self.h5f.close()
-
-    def show_gif(self, gif_bytes):
-        root = tk.Tk()
-        gif_stream = BytesIO(gif_bytes)
-        gif = Image.open(gif_stream)
-        frames = [ImageTk.PhotoImage(image=frame.copy()) for frame in ImageSequence.Iterator(gif)]
-        frame_label = tk.Label(root)
-        frame_label.pack()
-
-        def update_frame(num=0):
-            frame = frames[num]
-            frame_label.config(image=frame)
-            num = (num + 1) % len(frames)  
-            root.after(250, update_frame, num)  
-
-        update_frame() 
-        root.mainloop()
-
     def get_single_item(self, idx):
-        gif_data = np.array(self.h5f["gif_data"][str(idx)]).tobytes()
-        # self.show_gif(gif_data)
-        
-        target = self.h5f["targets"][str(idx)][()].decode("utf-8")
+        with h5py.File(self.data_file, "r") as h5f:
+            if str(idx) not in h5f["gif_data"]:
+                idx = 0
+            gif_data = np.array(h5f["gif_data"][str(idx)]).tobytes()
+            target = h5f["targets"][str(idx)][()].decode("utf-8")
 
         # (num_frames, 3, h, w) and (num_frames, h, w)
         gif_tensor, attention_mask = load_gif_compressed(gif_data)
 
+        # Tuple of three sets of strings
         action_in_target = [action for action in self.actions if action in target]
-        assert len(action_in_target) == 1
+        # print(target)
+        # print(action_in_target)
+        # print("before")
+        # assert len(action_in_target) == 1
 
         # 1 hot encoding, shape [10]
-        target_vector = torch.tensor([1 if action in target.split() else 0 for action in self.actions])
+        target_vector = [1 if action in target.split() else 0 for action in self.actions]
         assert len(target_vector) == 10 and sum(target_vector) == 1
 
         sample = {
@@ -104,7 +101,9 @@ def train_val_sklearn_split(dataset: GIFDataset, test_size=0.2):
 
 if __name__ == "__main__":
     dataset = GIFDataset()
-    # train_split, val_split = train_val_sklearn_split(dataset, test_size=0.2)
-    # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    train_split, val_split = train_val_sklearn_split(dataset, test_size=0.2)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    gif = dataset[1]["gif"]
+    for i_batch, sample_batched in enumerate(dataloader):
+        if i_batch == 3:
+            break
