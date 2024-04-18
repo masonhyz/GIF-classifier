@@ -67,6 +67,18 @@ class GIFDataset(Dataset):
 
         update_frame() 
         root.mainloop()
+        
+    def create_target_vector(self, actions, target):
+        target_components = set(target.split())
+        
+        target_vector = [0] * len(actions)
+        
+        for i, action in enumerate(actions):
+            if action in target_components:
+                target_vector[i] = 1
+                break  
+        
+        return torch.tensor(target_vector)
 
     def get_single_item(self, idx):
         gif_data = np.array(self.h5f["gif_data"][str(idx)]).tobytes()
@@ -77,11 +89,8 @@ class GIFDataset(Dataset):
         # (num_frames, 3, h, w) and (num_frames, h, w)
         gif_tensor, attention_mask = load_gif_compressed(gif_data)
 
-        action_in_target = [action for action in self.actions if action in target]
-        assert len(action_in_target) == 1
-
         # 1 hot encoding, shape [10]
-        target_vector = torch.tensor([1 if action in target.split() else 0 for action in self.actions])
+        target_vector = self.create_target_vector(self.actions, target)
         assert len(target_vector) == 10 and sum(target_vector) == 1
 
         sample = {
