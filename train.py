@@ -9,81 +9,74 @@ from dataset import GIFDataset, train_val_sklearn_split
 import time
 import os
 import numpy as np
-
 num_classes = 10
-start_epoch = 0
 
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
-print(f'Training on {device}')
 
 
-def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int, optimizer: torch.optim.Optimizer, criterion: nn.Module, eval_every: int, plot: bool, epoch: int):
 
+def train_one_epoch(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int, optimizer: torch.optim.Optimizer, criterion: nn.Module, plot: bool, epoch: int):
     model.train()
 
     if plot:
-        num_iters = []
         train_losses = []
-        train_accs = []
         val_accs = []
+    subset = Subset(train_data, np.random.choice(len(train_data), size=len(train_data) // 10 + 1, replace=False))
 
-    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(subset, batch_size=batch_size, shuffle=True, num_workers=8)
+    running_loss = 0
+    with tqdm(train_dataloader, desc=f"Epoch {epoch+1}") as t:
+        for i, sample in enumerate(t):
+            inputs = sample["gif"].to(device)
+            labels = torch.argmax(torch.stack(sample["target"]), dim=0).to(device)
+            
+            optimizer.zero_grad()
+            logits = model(inputs)
+            loss = criterion(logits, labels)
+            loss.backward()
+            optimizer.step()
 
-    for i, sample in tqdm(enumerate(train_dataloader), desc="Epoch"):
-        inputs = sample["gif"].to(device)
-        labels = torch.argmax(torch.stack(sample["target"]), dim=0).to(device)
-        logits = model(inputs)
-        loss = criterion(logits, labels)
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        if i % eval_every == 0:
-            train_loss = loss.item()
-            train_acc = estimate_accuracy(model, train_data)
-            val_acc = estimate_accuracy(model, val_data)
-
-            print(f"Iteration {i} training loss: {train_loss}, training accuracy: {train_acc}, validation accuracy: {val_acc}")
-
+            # Update running loss and loss list
+            running_loss += loss.item()
             if plot:
-                num_iters.append(i)
-                train_losses.append(train_loss)
-                train_accs.append(train_acc)
-                val_accs.append(val_acc)
+                train_losses.append(loss.item())
 
-            model.train()
+            # Update tqdm bar to show the current loss and running average loss
+            t.set_description(f"Epoch {epoch+1} Loss: {loss.item():.4f} Avg: {running_loss / (i + 1):.4f}")
+            t.refresh()  # to show immediately the update
 
-    if plot:
-        plt.figure()
-        plt.plot(num_iters, train_losses)
-        plt.xlabel("Number of Iterations")
-        plt.ylabel("Loss")
-        plt.title(f"Loss vs. Number of Iterations in Epoch {epoch}")
-        plt.savefig(f'training_plots/loss_epoch{epoch}')
+    # Accuracy check at the end of each epoch
+    train_acc = estimate_accuracy(model, train_data, "Training Accuracy")
+    val_acc = estimate_accuracy(model, val_data, "Validation Accuracy")
+    print(f"End of Epoch {epoch} - Training Accuracy: {train_acc}, Validation Accuracy: {val_acc}")
 
-        plt.figure()
-        plt.plot(num_iters, train_accs)
-        plt.plot(num_iters, val_accs)
-        plt.xlabel("Number of Iterations")
-        plt.ylabel("Accuracy")
-        plt.title(f"Accuracy vs. Number of Iterations in Epoch {epoch}")
-        plt.legend(["Train", "Validation"])
-        plt.savefig(f'training_plots/accuracy_epoch{epoch}')
+    # if plot:
+    #     plt.figure()
+    #     plt.plot(train_losses)
+    #     plt.xlabel("Iterations")
+    #     plt.ylabel("Training Loss")
+    #     plt.title(f"Training Loss in Epoch {epoch}")
+    #     plt.savefig(f'training_plots/loss_epoch{epoch}.png')
 
+    #     plt.figure()
+    #     plt.plot([val_acc] * len(train_losses))  # Plotting validation accuracy constant over the number of iterations
+    #     plt.xlabel("Iterations")
+    #     plt.ylabel("Validation Accuracy")
+    #     plt.title(f"Validation Accuracy in Epoch {epoch}")
+    #     plt.savefig(f'training_plots/accuracy_epoch{epoch}.png')
 
 @torch.no_grad()
-def estimate_accuracy(model: nn.Module, data: GIFDataset) -> float:
-
+def get_accuracy(model: nn.Module, data: GIFDataset) -> float:
+    
     model.eval()
-    subset = Subset(data, np.random.choice(len(data), size=len(data) // 10 + 1, replace=False))
-    dataloader = DataLoader(subset, batch_size=128)
+    dataloader = DataLoader(data, batch_size=32)
 
     count = 0
     total = 0
-    for sample in tqdm(dataloader, desc='Evaluation'):
+    for sample in tqdm(dataloader, desc="test"):
         inputs = sample["gif"].to(device)
         labels = torch.argmax(torch.stack(sample["target"]), dim=0).to(device)
 
@@ -93,9 +86,38 @@ def estimate_accuracy(model: nn.Module, data: GIFDataset) -> float:
         total += inputs.size(0)
 
     return count / total
+@torch.no_grad()
+def estimate_accuracy(model: nn.Module, data: GIFDataset, name: str) -> float:
+    model.eval()
+    
+    # Efficient subset selection
+    t1 = time.time()
+    indices = np.random.choice(len(data), size=len(data) // 20 + 1, replace=False)
+    subset = Subset(data, indices)
+    
+    # DataLoader with multiple workers
+    dataloader = DataLoader(subset, batch_size=32, num_workers=8, pin_memory=True)
+    t2 = time.time()
+    print(f"DataLoader setup time: {t2 - t1}")
+    count = 0
+    total = 0
+    
+    # Main loop
+    for sample in tqdm(dataloader, desc=name):
+        inputs = sample["gif"].to(device)
+        labels = torch.argmax(torch.stack(sample["target"]), dim=0).to(device)
+        
+        logits = model(inputs)
+        preds = torch.argmax(logits, dim=1)
+        
+        count += torch.sum(preds == labels).item()  # Ensure count is incremented correctly
+        total += inputs.size(0)
+    
+    accuracy = count / total if total > 0 else 0  # Handle division by zero
+    return accuracy
 
-
-def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 64, num_epochs: int = 20, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 1, start_epoch=0):
+def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_size: int = 32, num_epochs: int = 100, lr: float = 0.001, weight_decay: int = 0.0, plot: bool = True, eval_every: int = 50, save_every: int = 10):
+    print(f'Training on {device}')
 
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
@@ -105,26 +127,22 @@ def train(model: nn.Module, train_data: GIFDataset, val_data: GIFDataset, batch_
     
     if plot and not os.path.exists('training_plots'):
         os.makedirs('training_plots')
+    train_losses = []
+    val_accs = []
 
-    for epoch in range(start_epoch, start_epoch + num_epochs):
+    for epoch in range(num_epochs):
         print(f"Training epoch {epoch}.")
-        train_one_epoch(model, train_data, val_data, batch_size=batch_size, optimizer=optimizer, criterion=criterion, eval_every=eval_every, plot=plot, epoch=epoch)
+        train_one_epoch(model, train_data, val_data, batch_size=batch_size, optimizer=optimizer, criterion=criterion, plot=plot, epoch=epoch)
 
         if epoch % save_every == 0:
             torch.save(model.state_dict(), f"checkpoints/model_epoch{epoch}.pth")
 
 
-def load_model(start_epoch: int=0) -> GIFClassifier:
-    if start_epoch == 0:
-        return GIFClassifier(num_classes).to(device)
-    return GIFClassifier(num_classes).to(device).load_state_dict(torch.load(f'checkpoints/model_epoch{start_epoch}.pth'))
-
-
 def main():
     dataset = GIFDataset()
     train_data, val_data = train_val_sklearn_split(dataset, test_size=0.2)
-    model = load_model(start_epoch=start_epoch)
-    train(model, train_data, val_data, start_epoch=start_epoch)
+    model = GIFClassifier(num_classes).to(device)
+    train(model, train_data, val_data)
 
 
 if __name__ == "__main__":
