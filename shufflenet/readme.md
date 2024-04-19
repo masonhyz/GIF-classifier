@@ -1,1 +1,1 @@
-files in this folder are resourced from https://github.com/okankop/Efficient-3DCNNs.git
+Files in this folder are resourced from https://github.com/okankop/Efficient-3DCNNs.git
