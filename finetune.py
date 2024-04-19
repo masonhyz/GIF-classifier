@@ -1,8 +1,3 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
 from shufflenet.shufflenet import ShuffleNet
 from shufflenet.shufflenetv2 import ShuffleNetV2
 from train import *
@@ -28,7 +23,6 @@ def load_pretrained_shufflenetv2(num_new_classes):
     shuffnet = modify_classifier(shuffnet, num_new_classes)
     for param in shuffnet.parameters():
         param.requires_grad = False
-
     # Unfreeze the last classifier layer
     for param in shuffnet.classifier.parameters():
         param.requires_grad = True
