@@ -4,7 +4,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from shufflenet.shufflenetv2 import ShuffleNetV2
-from train import *
+# from train import *
 
 def modify_classifier(model, num_classes):
     in_features = model.classifier[1].in_features  # access in_features of the original classifier
@@ -19,12 +19,12 @@ def load_pretrained_shufflenetv2(num_new_classes):
     # Initialize model with the original number of classes
     num_original_classes = 400  # This must match the original model's classifier output size
     groups = 3  # Example group number, adjust based on your architecture
-    shuffnet = ShuffleNetV2(groups=groups, num_classes=num_original_classes)
+    shuffnet = ShuffleNetV2()
     try:
         shuffnet.load_state_dict(torch.load("shufflenet/jester_mobilenetv2_1.0x_RGB_16_best.pth"))
         print("successfully loaded pretrained model")
     except Exception as e:
-        print("pretrained parameter loading failed")
+        print(e)
     # Modify the model for a new number of classes
     shuffnet = modify_classifier(shuffnet, num_new_classes)
 
@@ -37,9 +37,9 @@ def load_pretrained_shufflenetv2(num_new_classes):
 
 
 if __name__ == "__main__":
-    dataset = GIFDataset()
-    train_data, val_data = train_val_sklearn_split(dataset, test_size=0.2)
+    # dataset = GIFDataset()
+    # train_data, val_data = train_val_sklearn_split(dataset, test_size=0.2)
     model = load_pretrained_shufflenetv2(8)
-    train(model, train_data, val_data, start_epoch=start_epoch)
+    # train(model, train_data, val_data, start_epoch=start_epoch)
 
 
